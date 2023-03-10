@@ -1,0 +1,6 @@
+name: simcoder
+dependencies:
+  - pip
+  - pip:
+    - Pillow
+    - --editable . # adds the the local package in development mode
