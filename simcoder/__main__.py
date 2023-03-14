@@ -1,28 +1,27 @@
 import logging
-from pathlib import Path
+
 import click
-
-import os
-
-import tensorflow as tf
-from tensorflow import keras
-
 import numpy as np
 from scipy.io import savemat
 from tqdm import tqdm
 
 from preprocess import preprocess_image
+from util import suppress_stdout_stderr
 
-# let's output the info
-logging.basicConfig(level=logging.INFO)
+import os
 
-# configure Tensorflow
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
+
+with suppress_stdout_stderr():
+    import tensorflow as tf
+
 tf.compat.v1.enable_v2_behavior()
+
+logging.basicConfig(level=logging.INFO)
 
 
 def get_resnet50():
-    model = keras.applications.resnet50.ResNet50(
+    model = tf.keras.applications.resnet50.ResNet50(
         include_top=False,
         weights="imagenet",
         input_shape=(224, 224, 3),
@@ -33,28 +32,30 @@ def get_resnet50():
 
 def get_simclr2():
     saved_model_path = (
-        "gs://simclr-checkpoints-tf2/simclrv2/finetuned_100pct/r152_3x_sk1/saved_model/"
+        "gs://simclr-checkpoints-tf2/simclrv2/finetuned_100pct/r50_1x_sk0/saved_model/"
     )
-    saved_model = tf.saved_model.load(saved_model_path)
+    with suppress_stdout_stderr():
+        saved_model = tf.saved_model.load(saved_model_path)
     return saved_model
 
 
 @click.command()
 @click.argument("input_dir", type=click.Path(exists=False))
-@click.argument("output_dir", type=click.Path(exists=False))
-def encode(input_dir, output_dir):
-    logging.info("Starting encoding ...")
+@click.argument("output_path", type=click.Path(exists=False))
+def encode(input_dir, output_path):
+    logging.info("Welcome to Simcoder.")
 
     batch_size = 32  # should this be a parameter?
 
     # load the SimCLR2 model
-    logging.info(f"Load SimCLR2 model.")
+    logging.info(f"Loading SimCLR2 model - this may take some time.")
     model = get_simclr2()
 
     # load in the image from the input_dir
-    logging.info(f"Load the dataset from {input_dir}/images.")
+    logging.info(f"Loading image dataset from {input_dir}")
+
     loaded_ds = tf.keras.utils.image_dataset_from_directory(
-        f"{input_dir}/images",
+        f"{input_dir}",
         labels=None,
         label_mode=None,
         class_names=None,
@@ -76,20 +77,23 @@ def encode(input_dir, output_dir):
         x = preprocess_image(x, 224, 224, is_training=False, color_distort=False)
         return x
 
-    ds = loaded_ds.map(_preprocess).batch(batch_size)
+    with suppress_stdout_stderr():
+        ds = loaded_ds.map(_preprocess).batch(batch_size)
 
     # generate the features from the final average pooling layer for each batch
     logging.info("Generating embeddings.")
     fs = []
     for x in tqdm(ds):
-        features = model(x, trainable=False)["final_avg_pool"]
-        fs.append(features.numpy())
+        with suppress_stdout_stderr():
+            features = model(x, trainable=False)["final_avg_pool"]
+            fs.append(features.numpy())
     all_features = np.concatenate(fs, axis=0)
 
     # write it out in the matlab compatible format
+    logging.info(f"Saving embeddings to {output_path}.")
     savemat(
-        f"{output_dir}/embeddings.mat",
-        {"features": all_features, "label": "embeddings"},
+        output_path,
+        {"features": all_features, "label": "simclr2_final_avg_pool_embeddings"},
     )
 
 
