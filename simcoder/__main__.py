@@ -6,13 +6,13 @@ from scipy.io import savemat
 from tqdm import tqdm
 
 from preprocess import preprocess_image
-from util import suppress_stdout_stderr
+from util import turn_output_off
 
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
-with suppress_stdout_stderr():
+with turn_output_off():
     import tensorflow as tf
 
 tf.compat.v1.enable_v2_behavior()
@@ -30,11 +30,11 @@ def get_resnet50():
     return model
 
 
-def get_simclr2():
+def get_simclr2(model_name):
     saved_model_path = (
         "gs://simclr-checkpoints-tf2/simclrv2/finetuned_100pct/r50_1x_sk0/saved_model/"
     )
-    with suppress_stdout_stderr():
+    with turn_output_off():
         saved_model = tf.saved_model.load(saved_model_path)
     return saved_model
 
@@ -77,14 +77,14 @@ def encode(input_dir, output_path):
         x = preprocess_image(x, 224, 224, is_training=False, color_distort=False)
         return x
 
-    with suppress_stdout_stderr():
+    with turn_output_off():
         ds = loaded_ds.map(_preprocess).batch(batch_size)
 
     # generate the features from the final average pooling layer for each batch
     logging.info("Generating embeddings.")
     fs = []
     for x in tqdm(ds):
-        with suppress_stdout_stderr():
+        with turn_output_off():
             features = model(x, trainable=False)["final_avg_pool"]
             fs.append(features.numpy())
     all_features = np.concatenate(fs, axis=0)
