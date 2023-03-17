@@ -39,6 +39,24 @@ def get_simclr2(model_name):
     return saved_model
 
 
+def save_array(arr, output_path, format):
+    logging.info(f"Saving embeddings to {output_path}.")
+
+    save_path = output_path.with_suffix(format)
+
+    if format == 'csv':
+        np.savetxt(save_path, arr, delimiter=',')
+    elif format == 'npy':
+        np.save(save_path, arr)
+    elif format == 'mat':
+        savemat(
+            save_path,
+            {"features": arr, "label": "simclr2_final_avg_pool_embeddings"},
+        )
+    else:
+        logging.error("Can't save! Unknown format.")
+
+
 @click.command()
 @click.argument('input_dir', type=click.Path(exists=False))
 @click.argument('output_path', type=click.Path(exists=False))
@@ -84,27 +102,21 @@ def encode(input_dir, output_path, format, chunksize):
 
     # generate the features from the final average pooling layer for each batch
     logging.info("Generating embeddings.")
+
     fs = []
     for x in tqdm(ds):
         with turn_output_off():
             features = model(x, trainable=False)["final_avg_pool"]
             fs.append(features.numpy())
-    all_features = np.concatenate(fs, axis=0)
+    features = np.concatenate(fs, axis=0)
 
-    # write it out in the matlab compatible format
-    logging.info(f"Saving embeddings to {output_path}.")
-
-    if format == 'csv':
-        np.savetxt(output_path, all_features, delimiter=',')
-    elif format == 'npy':
-        np.save('output_path', all_features)
-    elif format == 'mat':
-        savemat(
-            output_path,
-            {"features": all_features, "label": "simclr2_final_avg_pool_embeddings"},
-        )
+    if chunksize:
+        chunks = np.array_split(x, np.arange(chunksize, len(features), chunksize))
+        logging.info(len(chunks))
+        for idx, chunk in enumerate(chunks):
+            save_array(chunk, output_path / f"{idx}")
     else:
-        logging.error("Can't save! Unknown format.")
+        save_array(features, output_path)
 
 
 if __name__ == "__main__":
