@@ -40,9 +40,11 @@ def get_simclr2(model_name):
 
 
 @click.command()
-@click.argument("input_dir", type=click.Path(exists=False))
-@click.argument("output_path", type=click.Path(exists=False))
-def encode(input_dir, output_path):
+@click.argument('input_dir', type=click.Path(exists=False))
+@click.argument('output_path', type=click.Path(exists=False))
+@click.option('--format', type=click.Choice(['csv', 'npy', 'mat']), default='csv', help='output format')
+@click.option('--chunksize', type=int, default=10000, help='number of rows to process at a time')
+def encode(input_dir, output_path, format, chunksize):
     logging.info("Welcome to Simcoder.")
 
     batch_size = 32  # should this be a parameter?
@@ -91,10 +93,18 @@ def encode(input_dir, output_path):
 
     # write it out in the matlab compatible format
     logging.info(f"Saving embeddings to {output_path}.")
-    savemat(
-        output_path,
-        {"features": all_features, "label": "simclr2_final_avg_pool_embeddings"},
-    )
+
+    if format == 'csv':
+        np.savetxt(output_path, all_features, delimiter=',')
+    elif format == 'npy':
+        np.save('output_path', all_features)
+    elif format == 'mat':
+        savemat(
+            output_path,
+            {"features": all_features, "label": "simclr2_final_avg_pool_embeddings"},
+        )
+    else:
+        logging.error("Can't save! Unknown format.")
 
 
 if __name__ == "__main__":
