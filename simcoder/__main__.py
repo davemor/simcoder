@@ -115,7 +115,7 @@ def encode(input_dir, output_path, format, chunksize):
     for x in tqdm(ds):
         with turn_output_off():
             features = model(x, trainable=False)["final_avg_pool"]
-            fs.append(features.numpy())
+        fs.append(features.numpy())
     features = np.concatenate(fs, axis=0)
 
     if chunksize:

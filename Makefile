@@ -24,7 +24,7 @@ docker_run_elnuevo_interactive:
 		--gpus all \
 		--name $(LOCAL_USER)-$(DOCKER_IMAGE_NAME) \
 		-v /home/$(LOCAL_USER)/development/simcoder:/workspace/${PROJECT_NAME} \
-		-v /home/$(LOCAL_USER)/datasets/similarity:/input \
+		-v /home/$(LOCAL_USER)/datasets/mf/images:/input \
 		-v /home/$(LOCAL_USER)/results/similarity:/output \
 		-it $(DOCKER_IMAGE_NAME):latest
 
