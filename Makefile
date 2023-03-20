@@ -34,7 +34,7 @@ run_batch:
 		-u $(LOCAL_UID):$(LOCAL_GID) \
 		--gpus all \
 		--name $(LOCAL_USER)-$(DOCKER_IMAGE_NAME) \
-		-v /home/$(LOCAL_USER)/datasets/similarity:/input \
+		-v /home/$(LOCAL_USER)/datasets/mf/images:/input \
 		-v /home/$(LOCAL_USER)/results/similarity:/output \
 		-it $(DOCKER_IMAGE_NAME):latest \
-		/input /output --format=csv --chunksize=20
+		/input /output --format=csv --chunksize=10000
