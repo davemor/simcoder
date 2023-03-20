@@ -4,5 +4,7 @@ LABEL maintainer="David Morrison"
 
 RUN pip install tqdm
 
+COPY . /workspace/simcoder
+
 WORKDIR /workspace/simcoder
 ENTRYPOINT [ "python", "simcoder" ]
