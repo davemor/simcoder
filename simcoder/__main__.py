@@ -5,6 +5,7 @@ import click
 import numpy as np
 from scipy.io import savemat
 from tqdm import tqdm
+from pprint import pprint
 
 from preprocess import preprocess_image
 from util import turn_output_off
@@ -58,26 +59,8 @@ def save_array(arr, output_path, format):
         logging.error("Can't save! Unknown format.")
 
 
-@click.command()
-@click.argument("input_dir", type=click.Path(exists=False))
-@click.argument("output_path", type=click.Path(exists=False))
-@click.option(
-    "--format",
-    type=click.Choice(["csv", "npy", "mat"]),
-    default="csv",
-    help="output format",
-)
-@click.option(
-    "--chunksize", type=int, default=10000, help="number of rows to process at a time"
-)
-def encode(input_dir, output_path, format, chunksize):
-    logging.info("Welcome to Simcoder.")
-
-    batch_size = 32  # should this be a parameter?
-
-    # load the SimCLR2 model
-    logging.info(f"Loading SimCLR2 model - this may take some time.")
-    model = get_simclr2()
+def encode_images_in_dir(model, input_dir: Path) -> np.array:
+    batch_size = 1 # should this be a parameter?
 
     # load in the image from the input_dir
     logging.info(f"Loading image dataset from {input_dir}")
@@ -108,7 +91,7 @@ def encode(input_dir, output_path, format, chunksize):
     with turn_output_off():
         ds = loaded_ds.map(_preprocess).batch(batch_size)
 
-    # generate the features from the final average pooling layer for each batch
+        # generate the features from the final average pooling layer for each batch
     logging.info("Generating embeddings.")
 
     fs = []
@@ -117,6 +100,35 @@ def encode(input_dir, output_path, format, chunksize):
             features = model(x, trainable=False)["final_avg_pool"]
         fs.append(features.numpy())
     features = np.concatenate(fs, axis=0)
+
+    return features
+
+
+@click.command()
+@click.argument("input_dir", type=click.Path(exists=False))
+@click.argument("output_path", type=click.Path(exists=False))
+@click.option(
+    "--format",
+    type=click.Choice(["csv", "npy", "mat"]),
+    default="csv",
+    help="output format",
+)
+@click.option(
+    "--chunksize", type=int, default=10000, help="number of rows to process at a time"
+)
+def encode(input_dir, output_path, format, chunksize):
+    logging.info("Welcome to Simcoder.")
+
+    image_dirs = [f for f in Path(input_dir).iterdir() if f.is_dir()]
+    image_dirs = sorted(image_dirs, key=lambda p: int(p.name))
+    logging.info(f"Found {len(image_dirs)} image directories.")
+
+    # load the SimCLR2 model
+    logging.info(f"Loading SimCLR2 model - this may take some time.")
+    model = get_simclr2()
+
+    all_features = [encode_images_in_dir(model, im_dir) for im_dir in image_dirs]
+    features = np.concatenate(all_features, axis=0)
 
     if chunksize:
         chunks = np.array_split(
