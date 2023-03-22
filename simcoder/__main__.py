@@ -34,7 +34,7 @@ def get_resnet50():
 
 def get_simclr2():
     saved_model_path = (
-        "gs://simclr-checkpoints-tf2/simclrv2/finetuned_100pct/r50_1x_sk0/saved_model/"
+        "gs://simclr-checkpoints-tf2/simclrv2/finetuned_100pct/r152_3x_sk1/saved_model/"
     )
     with turn_output_off():
         saved_model = tf.saved_model.load(saved_model_path)
@@ -60,7 +60,7 @@ def save_array(arr, output_path, format):
 
 
 def encode_images_in_dir(model, input_dir: Path) -> np.array:
-    batch_size = 1 # should this be a parameter?
+    batch_size = 1  # should this be a parameter?
 
     # load in the image from the input_dir
     logging.info(f"Loading image dataset from {input_dir}")
